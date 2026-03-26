@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkySafe Dashboard</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cyan: #00ffcc;
+      --red: #ff3b30;
+      --dim: rgba(0, 255, 204, 0.12);
+      --border: rgba(0, 255, 204, 0.18);
+      --bg: #07090f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--cyan);
+      font-family: 'Courier New', Courier, monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background-image:
+        linear-gradient(var(--dim) 1px, transparent 1px),
+        linear-gradient(90deg, var(--dim) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent, transparent 3px,
+        rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 300;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 44px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7,9,15,0.95);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .topbar-logo {
+      font-size: 0.8rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px var(--cyan);
+    }
+    .topbar-logo span { color: rgba(0,255,204,0.4); }
+    .topbar-center {
+      display: flex;
+      gap: 24px;
+      font-size: 0.58rem;
+      letter-spacing: 2px;
+      color: rgba(0,255,204,0.5);
+    }
+    .topbar-center .dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      margin-right: 5px;
+      vertical-align: middle;
+      animation: blink 1.4s step-end infinite;
+    }
+    .topbar-center .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .topbar-right {
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      color: rgba(0,255,204,0.45);
+    }
+    #clock { color: var(--cyan); }
+
+    /* ALERT FLASH OVERLAY */
+    .alert-flash {
+      position: fixed;
+      inset: 0;
+      border: 2px solid var(--red);
+      pointer-events: none;
+      z-index: 250;
+      opacity: 0;
+      box-shadow: inset 0 0 60px rgba(255,59,48,0.15);
+      transition: opacity 0.1s;
+    }
+    .alert-flash.active { opacity: 1; }
+
+    /* MAIN LAYOUT */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 220px;
+      border-right: 1px solid var(--border);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background: rgba(7,9,15,0.92);
+      flex-shrink: 0;
+    }
+    .sidebar-section { }
+    .sidebar-label {
+      font-size: 0.52rem;
+      letter-spacing: 3px;
+      color: rgba(0,255,204,0.35);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+    .sidebar-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      letter-spacing: 1px;
+      line-height: 2.1;
+      color: rgba(0,255,204,0.7);
+    }
+    .sidebar-row .val { color: var(--cyan); }
+    .sidebar-row .val.alert { color: var(--red); animation: blink 0.9s step-end infinite; }
+
+    /* Threat bar */
+    .threat-wrap { margin-top: 4px; }
+    .threat-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.55rem;
+      letter-spacing: 2px;
+      color: rgba(0,255,204,0.45);
+      margin-bottom: 5px;
+    }
+    .threat-bar-bg {
+      height: 6px;
+      background: rgba(0,255,204,0.08);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .threat-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), var(--red));
+      border-radius: 2px;
+      transition: width 2s ease;
+    }
+
+    /* Node list */
+    .node-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.58rem;
+      letter-spacing: 1px;
+      color: rgba(0,255,204,0.65);
+      line-height: 2;
+    }
+    .node-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 5px var(--cyan);
+      flex-shrink: 0;
+    }
+    .node-dot.yellow { background: #ffe066; box-shadow: 0 0 5px #ffe066; }
+    .node-dot.red    { background: var(--red); box-shadow: 0 0 5px var(--red); }
+
+    /* CENTER PANEL */
+    .center-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .radar-wrap {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    canvas#radar {
+      display: block;
+    }
+    .radar-label {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.52rem;
+      letter-spacing: 3px;
+      color: rgba(0,255,204,0.3);
+      white-space: nowrap;
+    }
+
+    /* BOTTOM STATS ROW */
+    .stats-row {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .stat-card {
+      flex: 1;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      background: rgba(0,255,204,0.03);
+    }
+    .stat-card-label {
+      font-size: 0.48rem;
+      letter-spacing: 3px;
+      color: rgba(0,255,204,0.35);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .stat-card-val {
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px var(--cyan);
+    }
+    .stat-card-val.red { color: var(--red); text-shadow: 0 0 10px var(--red); }
+
+    /* RIGHT CONSOLE */
+    .console-panel {
+      width: 320px;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: rgba(7,9,15,0.92);
+      flex-shrink: 0;
+    }
+    .console-header {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.52rem;
+      letter-spacing: 3px;
+      color: rgba(0,255,204,0.4);
+      display: flex;
+      justify-content: space-between;
+    }
+    .console-body {
+      flex: 1;
+      overflow: hidden;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .log-line {
+      font-size: 0.58rem;
+      line-height: 1.9;
+      letter-spacing: 0.5px;
+      color: rgba(0,255,204,0.65);
+      text-shadow: 0 0 4px rgba(0,255,204,0.3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .log-line.warn { color: #ffe066; text-shadow: 0 0 4px rgba(255,224,102,0.3); }
+    .log-line.crit { color: var(--red); text-shadow: 0 0 6px rgba(255,59,48,0.4); }
+    .cursor {
+      display: inline-block;
+      width: 7px; height: 10px;
+      background: var(--cyan);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+      margin-left: 2px;
+    }
+
+    /* BOTTOM BAR */
+    .bottombar {
+      height: 30px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 30px;
+      font-size: 0.52rem;
+      letter-spacing: 2px;
+      color: rgba(0,255,204,0.3);
+      background: rgba(7,9,15,0.95);
+      flex-shrink: 0;
+    }
+    .bottombar span { color: rgba(0,255,204,0.55); }
+  </style>
+</head>
+<body>
+
+<div class="alert-flash" id="alertFlash"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">SkySafe <span>//</span> DePIN</div>
+  <div class="topbar-center">
+    <div><span class="dot"></span>SYSTEM ONLINE</div>
+    <div><span class="dot"></span>NETWORK SECURE</div>
+    <div><span class="dot red" id="alertDot"></span><span id="alertLabel">MONITORING</span></div>
+  </div>
+  <div class="topbar-right">SYS-CLK &nbsp; <span id="clock">00:00:00</span> UTC</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">System Status</div>
+      <div class="sidebar-row">NODES ACTIVE <span class="val" id="nodeCount">0</span></div>
+      <div class="sidebar-row">TRACKED <span class="val" id="tracked">0</span></div>
+      <div class="sidebar-row">UNREGISTERED <span class="val alert" id="unreg">0</span></div>
+      <div class="sidebar-row">UPTIME <span class="val">04:12:37</span></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Threat Level</div>
+      <div class="threat-wrap">
+        <div class="threat-label"><span>LOW</span><span>CRITICAL</span></div>
+        <div class="threat-bar-bg">
+          <div class="threat-bar-fill" id="threatBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Active Nodes</div>
+      <div class="node-item"><div class="node-dot"></div> NODE-07 &nbsp; SOUTHWEST</div>
+      <div class="node-item"><div class="node-dot"></div> NODE-12 &nbsp; MIDWEST</div>
+      <div class="node-item"><div class="node-dot yellow"></div> NODE-19 &nbsp; NORTHEAST</div>
+      <div class="node-item"><div class="node-dot"></div> NODE-23 &nbsp; SOUTHEAST</div>
+      <div class="node-item"><div class="node-dot red"></div> NODE-31 &nbsp; PACIFIC</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Network</div>
+      <div class="sidebar-row">COVERAGE <span class="val">62%</span></div>
+      <div class="sidebar-row">LATENCY <span class="val">14ms</span></div>
+      <div class="sidebar-row">PROTOCOL <span class="val">DePIN/v2</span></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel">
+    <div class="radar-wrap">
+      <canvas id="radar"></canvas>
+      <div class="radar-label">AIRSPACE GRID — SECTOR 7 // LIVE SWEEP</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card-label">Total Intercepts</div>
+        <div class="stat-card-val" id="totalIntercepts">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Avg Altitude</div>
+        <div class="stat-card-val" id="avgAlt">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Alert Events</div>
+        <div class="stat-card-val red" id="alertCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Signal Strength</div>
+        <div class="stat-card-val">-42 dBm</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT CONSOLE -->
+  <div class="console-panel">
+    <div class="console-header">
+      <span>TELEMETRY FEED</span>
+      <span id="logCount">0 LINES</span>
+    </div>
+    <div class="console-body" id="console">
+      <span class="cursor"></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottombar">
+  SECTOR <span>7-ALPHA</span> &nbsp;&nbsp;
+  GRID <span>34.0°N 118.2°W</span> &nbsp;&nbsp;
+  RADIUS <span>50nm</span> &nbsp;&nbsp;
+  FLOOR <span>0ft AGL</span> &nbsp;&nbsp;
+  CEILING <span>1200ft AGL</span>
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toISOString().split('T')[1].slice(0, 8);
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Radar canvas
+  const canvas = document.getElementById('radar');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const size = Math.min(wrap.clientWidth, wrap.clientHeight - 40);
+    canvas.width = size;
+    canvas.height = size;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  let angle = 0;
+  const blips = [];
+
+  function spawnBlip() {
+    const r = (Math.random() * 0.78 + 0.08);
+    const a = Math.random() * Math.PI * 2;
+    const isAlert = Math.random() > 0.82;
+    blips.push({
+      r, a,
+      age: 0,
+      maxAge: 180 + Math.random() * 120,
+      isAlert,
+      id: Math.random().toString(36).substring(2,6).toUpperCase()
+    });
+    if (blips.length > 18) blips.shift();
+  }
+
+  function drawRadar() {
+    const W = canvas.width;
+    const cx = W / 2, cy = W / 2, R = W / 2 - 10;
+
+    ctx.clearRect(0, 0, W, W);
+
+    // Background circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,255,204,0.015)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,255,204,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Rings
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * f, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,255,204,0.1)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    });
+
+    // Cross lines
+    ctx.strokeStyle = 'rgba(0,255,204,0.08)';
+    ctx.lineWidth = 0.5;
+    [[cx, cy-R, cx, cy+R], [cx-R, cy, cx+R, cy]].forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // Sweep gradient
+    const sweepGrad = ctx.createConicalGradient
+      ? null : null; // fallback below
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, angle - 0.9, angle);
+    ctx.closePath();
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    grd.addColorStop(0, 'rgba(0,255,204,0.0)');
+    grd.addColorStop(1, 'rgba(0,255,204,0.18)');
+    ctx.fillStyle = grd;
+    ctx.fill();
+    ctx.restore();
+
+    // Sweep line
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+    ctx.strokeStyle = 'rgba(0,255,204,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00ffcc';
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.restore();
+
+    // Blips
+    blips.forEach(b => {
+      const bx = cx + Math.cos(b.a) * b.r * R;
+      const by = cy + Math.sin(b.a) * b.r * R;
+      const life = 1 - (b.age / b.maxAge);
+      const color = b.isAlert ? '#ff3b30' : '#00ffcc';
+
+      ctx.beginPath();
+      ctx.arc(bx, by, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10 * life;
+      ctx.globalAlpha = life * 0.9;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+
+      b.age++;
+    });
+
+    // Clip to circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 5, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.restore();
+
+    angle += 0.025;
+    if (angle > Math.PI * 2) {
+      angle -= Math.PI * 2;
+      spawnBlip();
+      if (Math.random() > 0.6) spawnBlip();
+    }
+
+    requestAnimationFrame(drawRadar);
+  }
+  spawnBlip(); spawnBlip(); spawnBlip();
+  drawRadar();
+
+  // Threat bar animate
+  setTimeout(() => {
+    document.getElementById('threatBar').style.width = '38%';
+  }, 800);
+
+  // Stats counters
+  let totalInterceptsN = 0, alertCountN = 0, nodeCountN = 47, trackedN = 0, unregN = 0;
+  let logLines = 0;
+
+  document.getElementById('nodeCount').textContent = nodeCountN;
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  // Console log generator
+  const consoleEl = document.getElementById('console');
+  const cursor = consoleEl.querySelector('.cursor');
+
+  function generateLog() {
+    const id = Math.random().toString(36).substring(2,8).toUpperCase();
+    const alt = Math.floor(Math.random() * 800) + 50;
+    const spd = Math.floor(Math.random() * 50) + 8;
+    const lat = (Math.random() * 20 + 30).toFixed(4);
+    const lng = (-Math.random() * 50 - 80).toFixed(4);
+    const isAlert = Math.random() > 0.82;
+    const isWarn  = !isAlert && Math.random() > 0.75;
+
+    totalInterceptsN++;
+    logLines++;
+
+    if (isAlert) {
+      alertCountN++;
+      unregN++;
+      // Alert flash
+      const flash = document.getElementById('alertFlash');
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 200);
+      // Update threat bar randomly up
+      const cur = parseFloat(document.getElementById('threatBar').style.width) || 38;
+      document.getElementById('threatBar').style.width = Math.min(cur + 3, 95) + '%';
+      document.getElementById('alertLabel').textContent = 'ALERT DETECTED';
+      setTimeout(() => document.getElementById('alertLabel').textContent = 'MONITORING', 1800);
+    } else {
+      trackedN++;
+    }
+
+    const cls = isAlert ? 'crit' : isWarn ? 'warn' : '';
+    const tag = isAlert ? '[!!ALERT!!]' : '[TRACKED ]';
+    const t = new Date().toISOString().split('T')[1].slice(0,12);
+
+    const line = document.createElement('div');
+    line.className = 'log-line ' + cls;
+    line.textContent = `${t} ${tag} ID:${id} A:${alt}ft S:${spd}mph ${lat},${lng}`;
+
+    consoleEl.insertBefore(line, cursor);
+    if (consoleEl.children.length > 32) {
+      consoleEl.removeChild(consoleEl.firstChild);
+    }
+
+    document.getElementById('totalIntercepts').textContent = totalInterceptsN;
+    document.getElementById('alertCount').textContent = alertCountN;
+    document.getElementById('tracked').textContent = Math.min(trackedN, 9999);
+    document.getElementById('unreg').textContent = unregN;
+    document.getElementById('logCount').textContent = logLines + ' LINES';
+
+    const altAvg = 247; // simplified
+    document.getElementById('avgAlt').textContent = altAvg + 'ft';
+  }
+
+  setInterval(generateLog, Math.random() * 500 + 250);
+  setInterval(() => {
+    // re-random the interval feel
+    setTimeout(generateLog, Math.random() * 300);
+  }, 900);
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Void</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #060608;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0, 0, 0, 0.12) 3px,
+        rgba(0, 0, 0, 0.12) 4px
+      );
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    /* Subtle grid */
+    .grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 59, 48, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 59, 48, 0.035) 1px, transparent 1px);
+      background-size: 70px 70px;
+    }
+
+    /* Crosshairs */
+    .crosshair-h {
+      position: fixed;
+      top: 50%;
+      left: 0; right: 0;
+      height: 1px;
+      background: rgba(255, 59, 48, 0.07);
+    }
+    .crosshair-v {
+      position: fixed;
+      left: 50%;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(255, 59, 48, 0.07);
+    }
+
+    /* Corner brackets */
+    .bracket {
+      position: fixed;
+      width: 50px;
+      height: 50px;
+      border-color: rgba(255, 59, 48, 0.45);
+      border-style: solid;
+    }
+    .bracket.tl { top: 24px; left: 24px; border-width: 2px 0 0 2px; }
+    .bracket.tr { top: 24px; right: 24px; border-width: 2px 2px 0 0; }
+    .bracket.bl { bottom: 24px; left: 24px; border-width: 0 0 2px 2px; }
+    .bracket.br { bottom: 24px; right: 24px; border-width: 0 2px 2px 0; }
+
+    /* Corner readouts */
+    .readout {
+      position: fixed;
+      color: rgba(255, 59, 48, 0.55);
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      line-height: 2;
+    }
+    .readout.tl { top: 30px; left: 84px; }
+    .readout.tr { top: 30px; right: 84px; text-align: right; }
+    .readout.bl { bottom: 30px; left: 84px; }
+    .readout.br { bottom: 30px; right: 84px; text-align: right; }
+
+    /* Top bar */
+    .top-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255,59,48,0.6), transparent);
+      animation: barPulse 3s ease-in-out infinite;
+    }
+    @keyframes barPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* Center drone */
+    .scene {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .drone {
+      width: 14px;
+      height: 14px;
+      background-color: #ff3b30;
+      border-radius: 50%;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 0 18px #ff3b30, 0 0 40px rgba(255, 59, 48, 0.4);
+      animation: droneGlitch 5s infinite;
+    }
+
+    @keyframes droneGlitch {
+      0%, 88%, 100% { opacity: 1; transform: translate(0, 0); box-shadow: 0 0 18px #ff3b30, 0 0 40px rgba(255,59,48,0.4); }
+      89%  { opacity: 0.4; transform: translate(-3px, 1px); box-shadow: none; }
+      90%  { opacity: 0.9; transform: translate(3px, -2px); }
+      91%  { opacity: 0.2; transform: translate(0, 0); }
+      92%  { opacity: 1;   transform: translate(-1px, 3px); }
+    }
+
+    /* Ripple rings */
+    .ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 14px; height: 14px;
+      border: 2px solid #ff3b30;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: expand 3.5s cubic-bezier(0.2, 0.6, 0.4, 0.9) infinite;
+    }
+    .ring:nth-child(2) { animation-delay: 1.16s; }
+    .ring:nth-child(3) { animation-delay: 2.33s; }
+
+    @keyframes expand {
+      0%   { width: 14px; height: 14px; opacity: 0.85; border-width: 2.5px; }
+      100% { width: 700px; height: 700px; opacity: 0; border-width: 0.5px; }
+    }
+
+    /* Center label top */
+    .freq-label {
+      position: fixed;
+      top: calc(50% - 60px);
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 59, 48, 0.35);
+      font-size: 0.58rem;
+      letter-spacing: 5px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      animation: labelPulse 3.5s ease-in-out infinite;
+    }
+
+    /* No receiver */
+    .no-receiver {
+      position: fixed;
+      bottom: calc(50% - 52px);
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 59, 48, 0.6);
+      font-size: 0.62rem;
+      letter-spacing: 7px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      animation: labelPulse 2.5s ease-in-out infinite;
+      animation-delay: 1.25s;
+    }
+
+    @keyframes labelPulse {
+      0%, 100% { opacity: 0.2; }
+      50%       { opacity: 0.9; }
+    }
+
+    /* Timestamp */
+    .timestamp {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 59, 48, 0.25);
+      font-size: 0.55rem;
+      letter-spacing: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="crosshair-h"></div>
+  <div class="crosshair-v"></div>
+  <div class="top-bar"></div>
+
+  <div class="bracket tl"></div>
+  <div class="bracket tr"></div>
+  <div class="bracket bl"></div>
+  <div class="bracket br"></div>
+
+  <div class="readout tl">
+    REMOTE ID: BROADCASTING<br>
+    FREQ: 2.4 GHz<br>
+    PWR: +23 dBm
+  </div>
+  <div class="readout tr">
+    RECEIVER: ——<br>
+    NETWORK: OFFLINE<br>
+    STATUS: DARK
+  </div>
+  <div class="readout bl">LAT: 37.7749° N &nbsp;|&nbsp; LNG: 122.4194° W</div>
+  <div class="readout br">ALT: 247 ft &nbsp;|&nbsp; SPD: 18 mph</div>
+
+  <div class="freq-label">▸ &nbsp; REMOTE ID SIGNAL ACTIVE &nbsp; ◂</div>
+
+  <div class="scene">
+    <div class="drone">
+      <div class="ring"></div>
+      <div class="ring"></div>
+      <div class="ring"></div>
+    </div>
+  </div>
+
+  <div class="no-receiver">NO RECEIVER DETECTED</div>
+
+  <div class="timestamp" id="ts"></div>
+
+  <script>
+    const ts = document.getElementById('ts');
+    function tick() {
+      ts.textContent = new Date().toISOString().replace('T', ' ').slice(0, -5) + ' UTC';
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
