@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Void</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #050505; /* Pitch black/dark grey */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .drone {
+            width: 12px;
+            height: 12px;
+            background-color: #ff3b30; /* Red drone light */
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 15px #ff3b30;
+        }
+
+        .signal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            background-color: transparent;
+            border: 2px solid #ff3b30;
+            border-radius: 50%;
+            animation: ping 2.5s cubic-bezier(0.21, 0.53, 0.56, 0.8) infinite;
+        }
+
+        .signal.delay {
+            animation-delay: 1.25s;
+        }
+
+        @keyframes ping {
+            0% {
+                width: 12px;
+                height: 12px;
+                opacity: 1;
+                border-width: 3px;
+            }
+            100% {
+                width: 400px;
+                height: 400px;
+                opacity: 0;
+                border-width: 1px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="drone">
+        <div class="signal"></div>
+        <div class="signal delay"></div>
+    </div>
+</body>
+</html>

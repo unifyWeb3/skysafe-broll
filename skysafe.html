@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkySafe Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #0a0e17;
+            color: #00ffcc; /* Cyber cyan/green */
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .sidebar {
+            width: 250px;
+            border-right: 1px solid rgba(0, 255, 204, 0.2);
+            padding: 20px;
+            background: rgba(10, 14, 23, 0.9);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.4);
+            padding-bottom: 10px;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            line-height: 2;
+        }
+
+        .console {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .log {
+            margin: 4px 0;
+            font-size: 0.95rem;
+            opacity: 0.8;
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+        }
+
+        .alert {
+            color: #ff3b30;
+            text-shadow: 0 0 5px rgba(255, 59, 48, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>SkySafe // DePIN</h1>
+        <div class="status">
+            [SYS] ONLINE<br>
+            [NET] SECURE<br>
+            [NODES] ACTIVE<br>
+            AWAITING REMOTE ID...
+        </div>
+    </div>
+    <div class="console" id="console"></div>
+
+    <script>
+        const consoleEl = document.getElementById('console');
+        
+        function generateLog() {
+            const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const alt = Math.floor(Math.random() * 400) + 50;
+            const speed = Math.floor(Math.random() * 40) + 10;
+            const lat = (Math.random() * 10 + 30).toFixed(4);
+            const lng = (Math.random() * -10 - 90).toFixed(4);
+            
+            const isAlert = Math.random() > 0.85; // 15% chance of red alert text
+            
+            const logHTML = `<div class="log ${isAlert ? 'alert' : ''}">> INCEPT [${new Date().toISOString().split('T')[1].slice(0, -1)}] : REMOTE_ID [${id}] | ALT: ${alt}ft | SPD: ${speed}mph | LOC: ${lat}, ${lng} ${isAlert ? '[UNREGISTERED FLIGHT PATH]' : '[TRACKED]'}</div>`;
+            
+            consoleEl.insertAdjacentHTML('beforeend', logHTML);
+            
+            // Keep only the last 20 lines to prevent DOM overload
+            if (consoleEl.children.length > 25) {
+                consoleEl.removeChild(consoleEl.firstChild);
+            }
+        }
+
+        // Generate a new log line every 200 to 800 milliseconds
+        setInterval(generateLog, Math.random() * 600 + 200);
+    </script>
+</body>
+</html>

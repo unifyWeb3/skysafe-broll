@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Lighting Up</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #020202;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .node {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: popIn 0.5s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* FliteGrid-esque colors */
+        .color-1 { background: #00ffcc; box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; }
+        .color-2 { background: #b026ff; box-shadow: 0 0 10px #b026ff, 0 0 20px #b026ff; }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .connection {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            transform-origin: 0 0;
+            animation: fadeIn 1s forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <script>
+        const colors = ['color-1', 'color-2'];
+        
+        function addNode() {
+            const node = document.createElement('div');
+            node.className = `node ${colors[Math.floor(Math.random() * colors.length)]}`;
+            
+            // Random position on screen
+            const x = Math.random() * 95 + 2.5; // 2.5% to 97.5%
+            const y = Math.random() * 95 + 2.5;
+            
+            node.style.left = `${x}vw`;
+            node.style.top = `${y}vh`;
+            
+            document.body.appendChild(node);
+        }
+
+        // Add a new node every 150ms to simulate fast network growth
+        let nodeCount = 0;
+        const interval = setInterval(() => {
+            addNode();
+            nodeCount++;
+            if(nodeCount > 150) clearInterval(interval); // Stop after 150 nodes to avoid clutter
+        }, 150);
+    </script>
+</body>
+</html>
